@@ -45,7 +45,7 @@ pnpm verify:database
 
 The extractor parses JSON without executing the HTML, extracts only the three dashboards, and places private data/reference scripts under ignored `private/`. It excludes the outer legacy login configuration. `seed` generates idempotent administrator SQL: run `000-prepare.sql`, the 67 dataset chunks in manifest order, verify every mismatch count in `private/verification` is zero, then run `999-activate.sql`. For a different workspace set `WCI_WORKSPACE_ID` before generating SQL. Generated data and SQL must stay out of Git and the production bundle.
 
-The configured Supabase project is `hmhaacnkbzbodxbphbzl`; workspace ID is `00a0f3a9-ba2b-42fb-8f98-211e5c1fa8cb`. The 1,000 IJR, 1,098 Area and 4,509 Corporate originals and initial working batches have been migrated and verified there.
+The configured Supabase project is `bjaxdgncwfnbskuuglcg`; workspace ID is `00a0f3a9-ba2b-42fb-8f98-211e5c1fa8cb`. The 1,000 IJR, 1,098 Area and 4,509 Corporate originals and initial working batches have been migrated and verified there.
 
 ## Administrator and membership
 
@@ -72,13 +72,13 @@ Nine calculation/import tests pass with the original private fixture present, in
 
 Four browser tests cover all dashboards, filtering, pagination/details, spreadsheet quarantine/apply/restore, CSV/Word/PowerPoint downloads and a 390px mobile viewport. After extraction, start `pnpm dev`, install/use local Chrome, then run `pnpm exec playwright test`.
 
-Supabase RLS was checked with temporary identities in a rolled-back transaction: viewer writes denied, editor import/restore/update/custom rule accepted, original writes denied, nonmembers saw no records, and anonymous table access denied. The security advisor returned no issues. The performance advisor only flagged newly created indexes as [unused](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); these are retained for audit and foreign-key access. Database integrity hashes and counts matched all three original datasets. `supabase/tests/access.sql` reproduces the access test against this workspace.
+Supabase RLS was checked with temporary identities in a rolled-back transaction: viewer writes denied, editor import/restore/update/custom rule accepted, original writes denied, nonmembers saw no records, and anonymous table access denied. The database security checks passed. The project Auth advisor reports [leaked password protection is disabled](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); enabling that protection remains an owner-controlled Supabase setting. The performance advisor only flagged newly created indexes as [unused](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); these are retained for audit and foreign-key access. Database integrity hashes and counts matched all three original datasets. `supabase/tests/access.sql` reproduces the access test against this workspace.
 
 The local development preview is available only in Vite development mode with local extracted fixtures. It uses memory for changes. Production requires authenticated Supabase access and contains no embedded company records.
 
 ## Vercel deployment
 
-The production application is deployed to `windyolivia01-7061s-projects` as `imp-project`, using Vercel Drop because the account has no GitHub application installation. Functional source is the committed migration; future Git deployments require installing/linking the Vercel GitHub app for `TBIMPCS/IMP-PROJECT`. Production Vercel environment variables store the public Supabase URL/publishable key. The initial deployment archive also includes an ignored `.env.production` with the same public values. No company fixtures are uploaded.
+The production application is deployed to `windyolivia01-7061s-projects` as `imp-project`, using Vercel Drop because the account has no GitHub application installation. Functional source is the committed migration; future Git deployments require installing/linking the Vercel GitHub app for `TBIMPCS/IMP-PROJECT`. Production Vercel environment variables store the public Supabase URL/publishable key. Vercel production configuration overrides the public values included in the initial ignored `.env.production` deployment archive; the live Auth endpoint was checked against this configured project. No company fixtures are uploaded.
 
 Import `TBIMPCS/IMP-PROJECT` into workspace `windyolivia01-7061s-projects`, select Vite, and set the two public Supabase environment variables for production and preview. `vercel.json` defines `pnpm build`, `dist`, SPA routing and security headers. A linked Git repository supports subsequent deployments from main.
 
@@ -87,3 +87,4 @@ Production sign-in uses email/password and does not require an Auth redirect. If
 ## Compatibility notes
 
 The source SLA policy and its effective date (14 July 2025), inclusive weekdays, null handling, unavailable-SLA exclusions and product mappings are preserved. Original incomplete values remain visible instead of being silently removed (the Area source has blank statuses). Custom rule precedence follows the original Corporate memo mapping. New imports validate required fields and real calendar dates. Duplicate requests are retained with a warning, preserving source counts. PowerPoint tables use explicit page chunks; Word detail tables include every selected record. Very large reports may take longer to generate in the browser.
+
