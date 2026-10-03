@@ -1,5 +1,7 @@
 # Corporate, Area, dan IJR Monitoring
 
+Live application: https://imp-project-jade.vercel.app
+
 React, Vite and TypeScript migration of `Corporate_Area_IJR_Monitoring_WCI_v78.html`, backed by Supabase. Repository: https://github.com/TBIMPCS/IMP-PROJECT.
 
 ## Features
@@ -70,13 +72,15 @@ Nine calculation/import tests pass with the original private fixture present, in
 
 Four browser tests cover all dashboards, filtering, pagination/details, spreadsheet quarantine/apply/restore, CSV/Word/PowerPoint downloads and a 390px mobile viewport. After extraction, start `pnpm dev`, install/use local Chrome, then run `pnpm exec playwright test`.
 
-Supabase RLS was checked with temporary identities in a rolled-back transaction: viewer writes denied, editor import/restore/update/custom rule accepted, original writes denied, nonmembers saw no records, and anonymous table access denied. The security advisor returned no issues. Database integrity hashes and counts matched all three original datasets. `supabase/tests/access.sql` reproduces the access test against this workspace.
+Supabase RLS was checked with temporary identities in a rolled-back transaction: viewer writes denied, editor import/restore/update/custom rule accepted, original writes denied, nonmembers saw no records, and anonymous table access denied. The security advisor returned no issues. The performance advisor only flagged newly created indexes as [unused](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); these are retained for audit and foreign-key access. Database integrity hashes and counts matched all three original datasets. `supabase/tests/access.sql` reproduces the access test against this workspace.
 
 The local development preview is available only in Vite development mode with local extracted fixtures. It uses memory for changes. Production requires authenticated Supabase access and contains no embedded company records.
 
 ## Vercel deployment
 
-Import `TBIMPCS/IMP-PROJECT` into workspace `tbimpcs-9554`, select Vite, and set the two public Supabase environment variables for production and preview. `vercel.json` defines `pnpm build`, `dist`, SPA routing and security headers. A linked Git repository supports subsequent deployments from main.
+The production application is deployed to `windyolivia01-7061s-projects` as `imp-project`, using Vercel Drop because the account has no GitHub application installation. Functional source is the committed migration; future Git deployments require installing/linking the Vercel GitHub app for `TBIMPCS/IMP-PROJECT`. Production Vercel environment variables store the public Supabase URL/publishable key. The initial deployment archive also includes an ignored `.env.production` with the same public values. No company fixtures are uploaded.
+
+Import `TBIMPCS/IMP-PROJECT` into workspace `windyolivia01-7061s-projects`, select Vite, and set the two public Supabase environment variables for production and preview. `vercel.json` defines `pnpm build`, `dist`, SPA routing and security headers. A linked Git repository supports subsequent deployments from main.
 
 Production sign-in uses email/password and does not require an Auth redirect. If email confirmation/reset flows are enabled externally, configure Supabase Auth Site URL/allowed redirects to the actual deployment domain.
 
