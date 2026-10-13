@@ -1,4 +1,6 @@
 export type DatasetKind = 'ijr' | 'regional' | 'corporate';
+// Navigation can include pages that do not have a dataset yet.
+export type DashboardView = DatasetKind | 'dashboard4';
 export type Value = string | number | boolean | null | undefined;
 export type Payload = Record<string, Value>;
 export type SlaStatus = 'Within SLA' | 'Overdue' | 'Without SLA' | 'SLA Real Unavailable';
@@ -53,4 +55,5 @@ export interface Membership {
 }
 export const emptyFilters: Filters = { search: '', from: '', to: '', period: '', status: '', type: '', region: '', category: '', product: '', person: '', sla: '', flow: '', branch: '' };
 export const datasetTitles: Record<DatasetKind, string> = { ijr: 'IJR - BNIdirect', regional: 'Area - Non BNIdirect', corporate: 'Corporate - Non Piloting' };
+export const dashboardTitles: Record<DashboardView, string> = { ...datasetTitles, dashboard4: 'Dashboard 4' };
 export const text = (value: Value) => String(value ?? '').trim();

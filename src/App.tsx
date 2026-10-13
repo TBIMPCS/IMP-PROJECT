@@ -1,14 +1,16 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { type User } from '@supabase/supabase-js';
-import { ChartNoAxesCombined, Building2, Network, LogOut, RefreshCw, UserRound, ArrowUpRight } from 'lucide-react';
-import { type DatasetKind, type SlaRule, type Payload, type MonitoringRecord, type Membership, datasetTitles } from './types';
+import { ChartNoAxesCombined, Building2, Network, LogOut, RefreshCw, UserRound, ArrowUpRight, LayoutDashboard } from 'lucide-react';
+import { type DashboardView, type SlaRule, type Payload, type MonitoringRecord, type Membership, dashboardTitles } from './types';
 import { calculateSla } from './domain/sla';
 import { supabase } from './lib/supabase';
 import * as repository from './lib/repository';
 import { Auth } from './components/Auth';
 import Dashboard from './components/Dashboard';
+import DashboardPlaceholder from './components/DashboardPlaceholder';
 export default function App() {
-    const [user, setUser] = useState<User | null>(null), [authLoading, setAuthLoading] = useState(true), [preview, setPreview] = useState(false), [kind, setKind] = useState<DatasetKind>('ijr'), [members, setMembers] = useState<Membership[]>([]), [workspace, setWorkspace] = useState(''), [raw, setRaw] = useState<repository.StoredRow[]>([]), [original, setOriginal] = useState<repository.StoredRow[]>([]), [rules, setRules] = useState<SlaRule[]>([]), [loading, setLoading] = useState(false), [error, setError] = useState(''), [refresh, setRefresh] = useState(0), [profile, setProfile] = useState(false), [displayName, setDisplayName] = useState('');
+    const [user, setUser] = useState<User | null>(null), [authLoading, setAuthLoading] = useState(true), [preview, setPreview] = useState(false), [view, setView] = useState<DashboardView>('ijr'), [members, setMembers] = useState<Membership[]>([]), [workspace, setWorkspace] = useState(''), [raw, setRaw] = useState<repository.StoredRow[]>([]), [original, setOriginal] = useState<repository.StoredRow[]>([]), [rules, setRules] = useState<SlaRule[]>([]), [loading, setLoading] = useState(false), [error, setError] = useState(''), [refresh, setRefresh] = useState(0), [profile, setProfile] = useState(false), [displayName, setDisplayName] = useState('');
+    const kind = view === 'dashboard4' ? null : view;
     useEffect(() => { if (!supabase) {
         setAuthLoading(false);
         return;
@@ -29,7 +31,14 @@ export default function App() {
             setError('Akun belum memiliki akses workspace. Hubungi administrator.');
     } }).catch(e => { if (active)
         setError(e.message); }); return () => { active = false; }; }, [user, preview]);
-    useEffect(() => { if (!preview && !workspace)
+    useEffect(() => { if (kind === null) {
+        setRaw([]);
+        setOriginal([]);
+        setRules([]);
+        setLoading(false);
+        setError('');
+        return;
+    } if (!preview && !workspace)
         return; let active = true; setLoading(true); setError(''); setRaw([]); const load = preview ? (async () => { const response = await fetch('/__local-data/' + kind); if (!response.ok)
         throw new Error('File source lokal tidak tersedia.'); const payload = await response.json() as Payload[]; return { rows: payload.map((p, i) => ({ id: kind + '-' + i, payload: p, position: i + 1 })), rules: [] as SlaRule[] }; })() : Promise.all([repository.loadRows(workspace, kind), repository.loadRules(workspace)]).then(([rows, rules]) => ({ rows, rules })); load.then(result => { if (active) {
         setRaw(result.rows);
@@ -38,14 +47,14 @@ export default function App() {
     } }).catch(e => { if (active)
         setError(e.message); }).finally(() => { if (active)
         setLoading(false); }); return () => { active = false; }; }, [kind, workspace, preview, refresh]);
-    const rows = useMemo<MonitoringRecord[]>(() => raw.map(r => ({ id: r.id, payload: r.payload, sla: calculateSla(r.payload, kind, rules) })), [raw, kind, rules]);
+    const rows = useMemo<MonitoringRecord[]>(() => kind === null ? [] : raw.map(r => ({ id: r.id, payload: r.payload, sla: calculateSla(r.payload, kind, rules) })), [raw, kind, rules]);
     const membership = members.find(m => m.workspace_id === workspace), canEdit = preview || membership?.role === 'editor' || membership?.role === 'admin';
     const reload = useCallback(() => setRefresh(n => n + 1), []);
-    async function apply(payload: Payload[], name: string) { if (preview) {
+    async function apply(payload: Payload[], name: string) { if (kind === null) return; if (preview) {
         setRaw(payload.map((p, i) => ({ id: kind + '-' + i, payload: p, position: i + 1 })));
         return;
     } await repository.replaceRows(workspace, kind, payload, name); reload(); }
-    async function restore() { if (preview) {
+    async function restore() { if (kind === null) return; if (preview) {
         setRaw(original);
         return;
     } await repository.restoreRows(workspace, kind); reload(); }
@@ -79,5 +88,5 @@ export default function App() {
     if (!user && !preview)
         return <Auth onPreview={() => { setPreview(true); setError(''); }}/>;
     const name = preview ? 'Local Preview' : user?.user_metadata.display_name || user?.email || 'User';
-    return <div className="app-shell"><aside className="sidebar"><div className="side-ribbon"/><div className="brand-word"><span>◈</span> BNI</div><h1>Corporate, Area,<br />dan IJR Monitoring</h1><p className="side-caption">TRANSACTION BANKING SERVICES</p><nav aria-label="Pilih dashboard">{(['ijr', 'regional', 'corporate'] as DatasetKind[]).map((key, i) => { const Icon = [ChartNoAxesCombined, Network, Building2][i]; return <button key={key} className={kind === key ? 'active' : ''} onClick={() => setKind(key)}><span><Icon size={19}/></span>{datasetTitles[key]}{kind === key && <ArrowUpRight size={15}/>}</button>; })}</nav><div className="side-bottom"><div className="skyline" aria-hidden="true"><i /><i /><i /><i /><i /></div><span className="orange-line"/><p>Connected monitoring.<br />Shared progress.</p><small>{preview ? 'Local development preview' : membership?.wci_workspaces.name || 'Workspace Monitoring'}</small></div></aside><main className="main"><header className="topbar"><div><p className="eyebrow">MONITORING DASHBOARD</p><h2>{datasetTitles[kind]}</h2><p className="muted">Pantau request, implementasi, dan pencapaian SLA.</p></div><div className="header-actions">{members.length > 1 && <select aria-label="Workspace" value={workspace} onChange={e => setWorkspace(e.target.value)}>{members.map(m => <option key={m.workspace_id} value={m.workspace_id}>{m.wci_workspaces.name}</option>)}</select>}<button className="icon-button" aria-label="Refresh data" onClick={reload}><RefreshCw size={17}/></button><button className="profile-button" onClick={() => { setProfile(!profile); setDisplayName(String(user?.user_metadata.display_name || '')); }}><span>{String(name).slice(0, 2).toUpperCase()}</span><div><b>{name}</b><small>{preview ? 'Preview lokal' : membership?.role || 'Menunggu akses'}</small></div><UserRound size={17}/></button><button className="icon-button" aria-label="Logout" onClick={logout}><LogOut size={18}/></button></div></header>{profile && <section className="profile-panel"><h3>Profile</h3><p>{user?.email || 'Preview lokal'}</p>{!preview && <><label>Nama tampilan<input value={displayName} onChange={e => setDisplayName(e.target.value)}/></label><button className="primary" onClick={saveProfile}>Simpan profile</button></>}<button className="secondary" onClick={() => setProfile(false)}>Tutup</button></section>}{preview && <div className="preview-banner">Preview lokal · perubahan hanya berlaku selama sesi ini. Data bersama menggunakan Supabase setelah sign-in.</div>}{error && <div className="error" role="alert">{error}<button className="text-button" onClick={reload}>Coba lagi</button></div>}{loading ? <p className="empty">Memuat data…</p> : <Dashboard key={kind + '-' + workspace} kind={kind} rows={rows} rules={rules} canEdit={canEdit} onApply={apply} onRestore={restore} onDone={done} onSaveRule={saveRule} onDeleteRule={deleteRule}/>}<footer className="page-footer">Corporate, Area, dan IJR Monitoring · {rows.length.toLocaleString()} records · Memo SLA efektif 14 Juli 2025</footer></main></div>;
+    return <div className="app-shell"><aside className="sidebar"><div className="side-ribbon"/><div className="brand-word"><span>◈</span> BNI</div><h1>Corporate, Area,<br />dan IJR Monitoring</h1><p className="side-caption">TRANSACTION BANKING SERVICES</p><nav aria-label="Pilih dashboard">{(['ijr', 'regional', 'corporate', 'dashboard4'] as DashboardView[]).map((key, i) => { const Icon = [ChartNoAxesCombined, Network, Building2, LayoutDashboard][i]; return <button key={key} className={view === key ? 'active' : ''} aria-current={view === key ? 'page' : undefined} onClick={() => setView(key)}><span><Icon size={19}/></span>{dashboardTitles[key]}{view === key && <ArrowUpRight size={15}/>}</button>; })}</nav><div className="side-bottom"><div className="skyline" aria-hidden="true"><i /><i /><i /><i /><i /></div><span className="orange-line"/><p>Connected monitoring.<br />Shared progress.</p><small>{preview ? 'Local development preview' : membership?.wci_workspaces.name || 'Workspace Monitoring'}</small></div></aside><main className="main"><header className="topbar"><div><p className="eyebrow">MONITORING DASHBOARD</p><h2>{dashboardTitles[view]}</h2>{kind !== null && <p className="muted">Pantau request, implementasi, dan pencapaian SLA.</p>}</div><div className="header-actions">{members.length > 1 && <select aria-label="Workspace" value={workspace} onChange={e => setWorkspace(e.target.value)}>{members.map(m => <option key={m.workspace_id} value={m.workspace_id}>{m.wci_workspaces.name}</option>)}</select>}{kind !== null && <button className="icon-button" aria-label="Refresh data" onClick={reload}><RefreshCw size={17}/></button>}<button className="profile-button" onClick={() => { setProfile(!profile); setDisplayName(String(user?.user_metadata.display_name || '')); }}><span>{String(name).slice(0, 2).toUpperCase()}</span><div><b>{name}</b><small>{preview ? 'Preview lokal' : membership?.role || 'Menunggu akses'}</small></div><UserRound size={17}/></button><button className="icon-button" aria-label="Logout" onClick={logout}><LogOut size={18}/></button></div></header>{profile && <section className="profile-panel"><h3>Profile</h3><p>{user?.email || 'Preview lokal'}</p>{!preview && <><label>Nama tampilan<input value={displayName} onChange={e => setDisplayName(e.target.value)}/></label><button className="primary" onClick={saveProfile}>Simpan profile</button></>}<button className="secondary" onClick={() => setProfile(false)}>Tutup</button></section>}{preview && <div className="preview-banner">Preview lokal · perubahan hanya berlaku selama sesi ini. Data bersama menggunakan Supabase setelah sign-in.</div>}{kind !== null && error && <div className="error" role="alert">{error}<button className="text-button" onClick={reload}>Coba lagi</button></div>}{kind === null ? <DashboardPlaceholder onReturn={() => setView('ijr')}/> : loading ? <p className="empty">Memuat data…</p> : <Dashboard key={kind + '-' + workspace} kind={kind} rows={rows} rules={rules} canEdit={canEdit} onApply={apply} onRestore={restore} onDone={done} onSaveRule={saveRule} onDeleteRule={deleteRule}/>}<footer className="page-footer">Corporate, Area, dan IJR Monitoring{kind !== null && <> · {rows.length.toLocaleString()} records · Memo SLA efektif 14 Juli 2025</>}</footer></main></div>;
 }
