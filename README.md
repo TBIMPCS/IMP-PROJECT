@@ -7,6 +7,7 @@ React, Vite and TypeScript migration of `Corporate_Area_IJR_Monitoring_WCI_v78.h
 ## Features
 
 - IJR BNIdirect, Area non-BNIdirect, and Corporate non-piloting dashboards.
+- Dashboard 4 in the same sidebar/application, with an empty state until its dataset and business indicators are defined.
 - Status, process duration, region/branch, product, PIC workload, SLA and record detail views with chart drilldowns.
 - Search, month, custom date range, status, type, region/segment, product, PIC, flow, branch and SLA filters.
 - CSV/XLSX imports with sheet selection, adaptive headers, invalid-row quarantine, revision downloads, duplicate warnings and atomic replacement.
@@ -70,7 +71,7 @@ Viewers can read/export/report. Editors and admins can import/restore datasets, 
 
 Nine calculation/import tests pass with the original private fixture present, including every-record SLA parity against whitelisted original calculation functions. Without private fixtures, the three original-data checks are skipped and the six synthetic boundary/integrity tests run.
 
-Four browser tests cover all dashboards, filtering, pagination/details, spreadsheet quarantine/apply/restore, CSV/Word/PowerPoint downloads and a 390px mobile viewport. After extraction, start `pnpm dev`, install/use local Chrome, then run `pnpm exec playwright test`.
+Four browser tests using private source fixtures cover the three data dashboards, filtering, pagination/details, spreadsheet quarantine/apply/restore, CSV/Word/PowerPoint downloads and a 390px mobile viewport. After extraction, start `pnpm dev`, install/use local Chrome, then run `pnpm exec playwright test`.
 
 Supabase RLS was checked with temporary identities in a rolled-back transaction: viewer writes denied, editor import/restore/update/custom rule accepted, original writes denied, nonmembers saw no records, and anonymous table access denied. The database security checks passed. The project Auth advisor reports [leaked password protection is disabled](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); enabling that protection remains an owner-controlled Supabase setting. The performance advisor only flagged newly created indexes as [unused](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); these are retained for audit and foreign-key access. Database integrity hashes and counts matched all three original datasets. `supabase/tests/access.sql` reproduces the access test against this workspace.
 
@@ -88,3 +89,17 @@ Production sign-in uses email/password and does not require an Auth redirect. If
 
 The source SLA policy and its effective date (14 July 2025), inclusive weekdays, null handling, unavailable-SLA exclusions and product mappings are preserved. Original incomplete values remain visible instead of being silently removed (the Area source has blank statuses). Custom rule precedence follows the original Corporate memo mapping. New imports validate required fields and real calendar dates. Duplicate requests are retained with a warning, preserving source counts. PowerPoint tables use explicit page chunks; Word detail tables include every selected record. Very large reports may take longer to generate in the browser.
 
+## Dashboard 4
+
+`DashboardView` models navigation separately from `DatasetKind`. Dashboard 4 is a page, not a new dataset: it does not mount the analytical Dashboard component or call dataset/rule loading, import, restore, or SLA calculations. The data effect exits early and invalidates pending loads when this page is selected. Existing data dashboards keep their dataset types and database schema.
+
+The empty state reuses the shared sidebar, topbar, profile controls, blue palette, typography and panel styles. It explains that the dataset and indicators are not yet defined, with a return button to IJR. No zero-value KPIs, charts, record totals, SLA reference, data filters, or refresh action appear. On mobile, the four sidebar options use a two-column layout.
+
+Four additional browser tests use explicitly mocked test fixtures (not company data) to check navigation to/from all three existing dashboards, no data requests on Dashboard 4, late-request isolation, prior-error clearing, mobile layout, and authenticated repository loading with a workspace switch. These can run without the private original datasets:
+
+```sh
+pnpm dev
+pnpm exec playwright test --grep 'Dashboard 4 navigation'
+```
+
+The four original browser tests still require the private extracted fixtures. No Dashboard 4 business definitions or data have been introduced.
